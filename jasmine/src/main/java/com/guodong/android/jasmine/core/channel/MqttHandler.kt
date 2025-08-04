@@ -1,7 +1,6 @@
 package com.guodong.android.jasmine.core.channel
 
 import android.util.Log
-import com.guodong.android.jasmine.logger.Logger
 import com.guodong.android.jasmine.common.CLIENT_ID
 import com.guodong.android.jasmine.common.CLIENT_USERNAME
 import com.guodong.android.jasmine.common.MANUAL_DISCONNECT_KEY
@@ -14,6 +13,7 @@ import com.guodong.android.jasmine.core.listener.IClientListener
 import com.guodong.android.jasmine.core.listener.IClientListener.ClientOfflineReason.Companion.EXCEPTION_OCCURRED
 import com.guodong.android.jasmine.core.listener.IClientListener.ClientOfflineReason.Companion.KEEP_ALIVE_TIMEOUT
 import com.guodong.android.jasmine.core.retry.RetryGroup
+import com.guodong.android.jasmine.logger.Logger
 import com.guodong.android.jasmine.store.ISessionStore
 import io.netty.channel.ChannelHandler.Sharable
 import io.netty.channel.ChannelHandlerContext
@@ -98,8 +98,6 @@ internal class MqttHandler(
             )
             return
         }
-
-        Log.d(TAG, "channelRead0: Thread(${Thread.currentThread().name})  messageType -> $messageType")
 
         handler.handle(ctx, msg)
     }

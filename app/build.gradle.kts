@@ -5,20 +5,37 @@ plugins {
 
 android {
     namespace = "com.guodong.android.jasmine.recipe"
-    compileSdk = 35
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.guodong.android.jasmine.recipe"
-        minSdk = 24
-        targetSdk = 35
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("guodongAndroid.jks")
+            storePassword = "33919135"
+            keyAlias = "guodongandroid"
+            keyPassword = "33919135"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs["release"]
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders += mapOf("app_name" to "JasmineD")
+        }
+
         release {
+            signingConfig = signingConfigs["release"]
+            manifestPlaceholders += mapOf("app_name" to "JasmineR")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -57,7 +74,8 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
 
-    implementation(project(":jasmine"))
+    debugImplementation(project(":jasmine"))
+    releaseImplementation(libs.jasmine)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

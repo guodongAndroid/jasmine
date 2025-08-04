@@ -22,10 +22,9 @@ internal class MessageValue(
         )
     }
 
-    @Keep
+    @field:Keep
     @Volatile
-    var state: MqttMessageType = MqttMessageType.PUBLISH
-        private set
+    private var state: MqttMessageType = MqttMessageType.PUBLISH
 
     fun nextState(): Boolean {
         if (!isExactlyOnce()) {
@@ -64,5 +63,5 @@ internal class MessageValue(
         }
     }
 
-    fun isExactlyOnce() = qos == MqttQoS.EXACTLY_ONCE.value()
+    private fun isExactlyOnce() = qos == MqttQoS.EXACTLY_ONCE.value()
 }

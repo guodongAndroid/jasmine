@@ -14,6 +14,7 @@ class MqttAuthentication(
     val password: ByteArray,
 )
 
+@Keep
 interface IMqttAuthenticator : Interceptor<MqttAuthentication, Boolean> {
 
     companion object : IMqttAuthenticator {

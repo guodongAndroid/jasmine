@@ -2,6 +2,7 @@ package com.guodong.android.jasmine
 
 import androidx.annotation.GuardedBy
 import androidx.annotation.IntDef
+import androidx.annotation.Keep
 import com.guodong.android.jasmine.common.HTTP_AGGREGATOR_CHANNEL_HANDLER
 import com.guodong.android.jasmine.common.HTTP_CODER_CHANNEL_HANDLER
 import com.guodong.android.jasmine.common.HTTP_COMPRESSOR_CHANNEL_HANDLER
@@ -68,6 +69,7 @@ import kotlin.concurrent.thread
 /**
  * Created by guodongAndroid on 2025/8/1
  */
+@Keep
 class Jasmine private constructor(internal val builder: Builder) {
 
     companion object {
@@ -439,6 +441,7 @@ class Jasmine private constructor(internal val builder: Builder) {
         }.sync().channel()
     }
 
+    @Keep
     class Builder {
 
         internal var host: String = ""

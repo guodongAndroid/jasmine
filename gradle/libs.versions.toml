@@ -7,6 +7,11 @@ compileSdk = "35"
 minSdk = "24"
 targetSdk = "35"
 
+mavenPublish = "0.34.0"
+
+jasmine = "0.0.2"
+jasminePublish = "0.0.2"
+
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
@@ -39,10 +44,13 @@ netty-common = { module = "io.netty:netty-common", version.ref = "netty" }
 netty-handler = { module = "io.netty:netty-handler", version.ref = "netty" }
 netty-transport = { module = "io.netty:netty-transport", version.ref = "netty" }
 
+# Jasmine
+jasmine = { group = "com.sunxiaodou.android", name = "jasmine", version.ref = "jasmine" }
+
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }

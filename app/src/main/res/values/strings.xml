@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">jasmine</string>
+    <string name="hello_jasmine">Hello Jasmine!</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="running">Running</string>
+    <string name="mqtt_port">MQTT Port</string>
+    <string name="mqtt_port_hint">1883</string>
+    <string name="websocket">WebSocket</string>
+    <string name="websocket_port">WebSocket Port</string>
+    <string name="websocket_path">WebSocket Path</string>
+    <string name="websocket_port_hint">8083</string>
+    <string name="websocket_path_hint">/mqtt</string>
+</resources>

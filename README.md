@@ -1,6 +1,6 @@
 # Jasmine
 
-[![License: Apache 2.0](https://img.shields.io/github/license/guodongAndroid/jasmine?color=yellow)](./LICENSE.txt) ![Maven Central Version](https://img.shields.io/maven-central/v/com.sunxiaodou.android/jasmine)
+[![License: Apache 2.0](https://img.shields.io/github/license/guodongAndroid/jasmine?color=yellow)](./LICENSE.txt) [![Maven Central Version](https://img.shields.io/maven-central/v/com.sunxiaodou.android/jasmine)](https://central.sonatype.com/artifact/com.sunxiaodou.android/jasmine)
 
 Jasmine 是一个基于 Netty 并使用 Kotlin 开发的适用于 Android 的轻量级 MQTT Broker。
 

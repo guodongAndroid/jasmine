@@ -9,8 +9,8 @@ targetSdk = "36"
 
 mavenPublish = "0.34.0"
 
-jasmine = "0.0.2"
-jasminePublish = "0.0.3-SNAPSHOT"
+jasmine = "0.0.3"
+jasminePublish = "0.0.3"
 
 junit = "4.13.2"
 junitVersion = "1.2.1"

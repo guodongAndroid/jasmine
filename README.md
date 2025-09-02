@@ -12,13 +12,14 @@ Jasmine 是一个基于 Netty 并使用 Kotlin 开发的适用于 Android 的轻
 - 订阅主题通配符支持
 - WebSocket双协议支持
 - 默认基于内存的消息持久化
-- 必须提供用户名和密码，默认无需认证
+- 不支持匿名访问，但默认无需认证
 - 支持自定义认证逻辑
+- 支持SSL/TLS，单向/双向认证
 
 ## 集成
 
 ```kotlin
-implementation("com.sunxiaodou.android:jasmine:0.0.2")
+implementation("com.sunxiaodou.android:jasmine:${latest-version}")
 ```
 
 ## 使用
@@ -35,10 +36,17 @@ val jasmine = Jasmine.Builder().start() // 默认端口1883
 
 ```kotlin
 val jasmine = Jasmine.Builder()
-	.port(18883) // 指定端口
+	.port(1883) // 指定端口，默认1883
+	.enableSSL(true) // 启用SSL/TLS
+	.sslPort(1884) // 指定SSL/TLS端口，默认1884
+	.serverCertFile(File("")) // 指定服务端证书，启用SSL/TLS时必须指定
+	.privateKeyFile(File("")) // 指定服务端私钥，PKCS#8格式，启用SSL/TLS时必须指定
+	.enableTwoWayAuth(true) // 启用双向认证
+	.caCertFile(File("")) // 指定客户端证书的CA证书，启用双向认证时必须指定
 	.enableWebsocket(true) // 启用WebSocket
-	.websocketPort(8083) // 指定WebSocket端口
-	.websocketPath("/mqtt") // 指定WebSocket路径
+	.websocketPort(8083) // 指定WebSocket端口，默认8083
+	.websocketSSLPort(8084) // 指定WebSocket SSL/TLS端口，默认8084
+	.websocketPath("/mqtt") // 指定WebSocket路径，默认/mqtt
 	.keepAliveInSeconds(5) // 指定客户端保持时长，单位秒，默认5s客户端与Broker没有交互即断开连接
 	.retryInterval(3_000) // 指定QoS1/QoS2消息重发间隔时长，单位毫秒，默认3_000毫秒
 	.maxRetries(5) // 指定QoS1/QoS2消息最大重发次数，默认5次
@@ -52,5 +60,4 @@ val jasmine = Jasmine.Builder()
 
 ## 后续功能
 
-- SSL连接
 - 数据转发

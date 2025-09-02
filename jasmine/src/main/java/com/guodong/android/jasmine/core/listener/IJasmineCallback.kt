@@ -1,12 +1,14 @@
 package com.guodong.android.jasmine.core.listener
 
 import androidx.annotation.Keep
+import androidx.annotation.WorkerThread
 import com.guodong.android.jasmine.Jasmine
 
 /**
  * Created by guodongAndroid on 2025/8/1
  */
 @Keep
+@WorkerThread
 interface IJasmineCallback {
     fun onStarted(jasmine: Jasmine)
     fun onStartFailure(jasmine: Jasmine, cause: Throwable)

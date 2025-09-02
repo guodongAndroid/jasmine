@@ -61,7 +61,7 @@ internal class MqttHandler(
     override fun channelInactive(ctx: ChannelHandlerContext) {
         val channel = ctx.channel()
         val clientIdKey = AttributeKey.valueOf<String>(CLIENT_ID)
-        val clientId = channel.attr(clientIdKey).get() ?: null
+        val clientId = channel.attr(clientIdKey).get()
         if (clientId != null && sessionStore.contains(clientId)) {
             sessionStore.remove(clientId)
 

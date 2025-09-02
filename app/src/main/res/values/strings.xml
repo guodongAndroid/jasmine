@@ -5,10 +5,17 @@
     <string name="stop">Stop</string>
     <string name="running">Running</string>
     <string name="mqtt_port">MQTT Port</string>
+    <string name="mqtt_ssl_port">MQTT SSL Port</string>
     <string name="mqtt_port_hint">1883</string>
+    <string name="mqtt_ssl_port_hint">1884</string>
     <string name="websocket">WebSocket</string>
     <string name="websocket_port">WebSocket Port</string>
+    <string name="websocket_ssl_port">WebSocket SSL Port</string>
     <string name="websocket_path">WebSocket Path</string>
     <string name="websocket_port_hint">8083</string>
+    <string name="websocket_ssl_port_hint">8084</string>
     <string name="websocket_path_hint">/mqtt</string>
+    <string name="text_client_counts">Client counts: %d</string>
+    <string name="mqtt_ssl">MQTT SSL</string>
+    <string name="mqtt_ssl_two_way">MQTT SSL Two-way</string>
 </resources>

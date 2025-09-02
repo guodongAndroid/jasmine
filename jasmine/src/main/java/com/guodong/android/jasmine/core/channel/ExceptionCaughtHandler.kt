@@ -34,7 +34,7 @@ internal class ExceptionCaughtHandler(
     override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable?) {
         val channel = ctx.channel()
         val clientIdKey = AttributeKey.valueOf<String>(CLIENT_ID)
-        val clientId = channel.attr(clientIdKey).get() ?: null
+        val clientId = channel.attr(clientIdKey).get()
 
         logger.e(TAG, "exceptionCaught: ${cause?.message}", cause)
 

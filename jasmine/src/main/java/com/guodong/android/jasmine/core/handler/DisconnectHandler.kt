@@ -1,6 +1,5 @@
 package com.guodong.android.jasmine.core.handler
 
-import com.guodong.android.jasmine.logger.Logger
 import com.guodong.android.jasmine.common.CLIENT_ID
 import com.guodong.android.jasmine.common.CLIENT_USERNAME
 import com.guodong.android.jasmine.common.MANUAL_DISCONNECT_KEY
@@ -8,6 +7,7 @@ import com.guodong.android.jasmine.common.UNKNOWN_CLIENT_USERNAME
 import com.guodong.android.jasmine.core.listener.IClientListener
 import com.guodong.android.jasmine.core.listener.IClientListener.ClientOfflineReason.Companion.MANUAL_DISCONNECT
 import com.guodong.android.jasmine.core.retry.RetryGroup
+import com.guodong.android.jasmine.logger.Logger
 import com.guodong.android.jasmine.store.IPublishMessageStore
 import com.guodong.android.jasmine.store.ISessionStore
 import com.guodong.android.jasmine.store.ISubscriptionStore
@@ -15,11 +15,13 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.mqtt.MqttMessage
 import io.netty.handler.codec.mqtt.MqttMessageType
 import io.netty.util.AttributeKey
+import java.util.concurrent.RejectedExecutionException
 
 /**
  * Created by guodongAndroid on 2025/8/1
  */
 internal class DisconnectHandler(
+    private val sslEnabled: Boolean,
     private val retryGroup: RetryGroup,
     private val sessionStore: ISessionStore,
     private val subscriptionStore: ISubscriptionStore,
@@ -57,6 +59,15 @@ internal class DisconnectHandler(
 
         channel.attr(AttributeKey.valueOf<Boolean>(MANUAL_DISCONNECT_KEY)).set(true)
 
-        channel.close()
+        if (sslEnabled) {
+            try {
+                // SSL连接需异步关闭，否则会触发异常
+                ctx.executor().execute { ctx.close() }
+            } catch (_: RejectedExecutionException) {
+                ctx.close()
+            }
+        } else {
+            ctx.close()
+        }
     }
 }

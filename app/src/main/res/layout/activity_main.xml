@@ -29,7 +29,7 @@
         android:layout_marginBottom="16dp"
         android:text="@string/mqtt_port"
         android:textSize="20sp"
-        app:layout_constraintBottom_toTopOf="@id/horizontal_0.5"
+        app:layout_constraintBottom_toTopOf="@id/mqtt_ssl_label"
         app:layout_constraintStart_toStartOf="parent" />
 
     <com.google.android.material.textfield.TextInputEditText
@@ -40,12 +40,85 @@
         android:layout_marginEnd="16dp"
         android:gravity="end"
         android:hint="@string/mqtt_port_hint"
+        android:imeOptions="actionNext"
         android:inputType="numberDecimal"
         android:maxLength="5"
         app:layout_constraintBottom_toBottomOf="@id/mqtt_port_label"
         app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
         app:layout_constraintStart_toEndOf="@id/mqtt_port_label"
         app:layout_constraintTop_toTopOf="@id/mqtt_port_label" />
+
+    <TextView
+        android:id="@+id/mqtt_ssl_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:text="@string/mqtt_ssl"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@id/mqtt_ssl_two_way_label"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/mqtt_ssl_switch"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:enabled="false"
+        app:layout_constraintBottom_toBottomOf="@id/mqtt_ssl_label"
+        app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
+        app:layout_constraintStart_toEndOf="@id/mqtt_ssl_label"
+        app:layout_constraintTop_toTopOf="@id/mqtt_ssl_label" />
+
+    <TextView
+        android:id="@+id/mqtt_ssl_two_way_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:text="@string/mqtt_ssl_two_way"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@id/mqtt_ssl_port_label"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/mqtt_ssl_two_way_switch"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:enabled="false"
+        app:layout_constraintBottom_toBottomOf="@id/mqtt_ssl_two_way_label"
+        app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
+        app:layout_constraintStart_toEndOf="@id/mqtt_ssl_two_way_label"
+        app:layout_constraintTop_toTopOf="@id/mqtt_ssl_two_way_label" />
+
+    <TextView
+        android:id="@+id/mqtt_ssl_port_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:text="@string/mqtt_ssl_port"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@id/horizontal_0.5"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/mqtt_ssl_port"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:enabled="false"
+        android:gravity="end"
+        android:hint="@string/mqtt_ssl_port_hint"
+        android:imeOptions="actionNext"
+        android:inputType="numberDecimal"
+        android:maxLength="5"
+        app:layout_constraintBottom_toBottomOf="@id/mqtt_ssl_port_label"
+        app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
+        app:layout_constraintStart_toEndOf="@id/mqtt_ssl_port_label"
+        app:layout_constraintTop_toTopOf="@id/mqtt_ssl_port_label" />
 
     <TextView
         android:id="@+id/websocket_label"
@@ -87,12 +160,41 @@
         android:enabled="false"
         android:gravity="end"
         android:hint="@string/websocket_port_hint"
+        android:imeOptions="actionNext"
         android:inputType="numberDecimal"
         android:maxLength="5"
         app:layout_constraintBottom_toBottomOf="@id/websocket_port_label"
         app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
         app:layout_constraintStart_toEndOf="@id/websocket_port_label"
         app:layout_constraintTop_toTopOf="@id/websocket_port_label" />
+
+    <TextView
+        android:id="@+id/websocket_ssl_port_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:text="@string/websocket_ssl_port"
+        android:textSize="20sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/websocket_port_label" />
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/websocket_ssl_port"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:enabled="false"
+        android:gravity="end"
+        android:hint="@string/websocket_ssl_port_hint"
+        android:imeOptions="actionNext"
+        android:inputType="numberDecimal"
+        android:maxLength="5"
+        app:layout_constraintBottom_toBottomOf="@id/websocket_ssl_port_label"
+        app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
+        app:layout_constraintStart_toEndOf="@id/websocket_ssl_port_label"
+        app:layout_constraintTop_toTopOf="@id/websocket_ssl_port_label" />
 
     <TextView
         android:id="@+id/websocket_path_label"
@@ -103,7 +205,7 @@
         android:text="@string/websocket_path"
         android:textSize="20sp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/websocket_port_label" />
+        app:layout_constraintTop_toBottomOf="@id/websocket_ssl_port_label" />
 
     <com.google.android.material.textfield.TextInputEditText
         android:id="@+id/websocket_path"
@@ -111,9 +213,12 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
+        android:singleLine="true"
+        android:maxLines="1"
         android:enabled="false"
         android:gravity="end"
-        android:hint="@string/websocket_path_hint"
+        android:imeOptions="actionDone"
+        android:text="@string/websocket_path_hint"
         app:layout_constraintBottom_toBottomOf="@id/websocket_path_label"
         app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
         app:layout_constraintStart_toEndOf="@id/websocket_path_label"
@@ -149,10 +254,20 @@
         android:id="@+id/state"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
         android:text="@string/hello_jasmine"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="@id/vertical_0.5"
         app:layout_constraintTop_toTopOf="@id/horizontal_0.5" />
+
+    <TextView
+        android:id="@+id/tv_client_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/text_client_counts"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@id/vertical_0.5"
+        app:layout_constraintTop_toBottomOf="@id/state" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -2,11 +2,13 @@ package com.guodong.android.jasmine.core.listener
 
 import androidx.annotation.IntDef
 import androidx.annotation.Keep
+import androidx.annotation.WorkerThread
 
 /**
  * Created by guodongAndroid on 2025/8/1
  */
 @Keep
+@WorkerThread
 interface IClientListener {
 
     @Keep

@@ -3,22 +3,13 @@ package com.guodong.android.jasmine
 import androidx.annotation.GuardedBy
 import androidx.annotation.IntDef
 import androidx.annotation.Keep
-import com.guodong.android.jasmine.common.HTTP_AGGREGATOR_CHANNEL_HANDLER
-import com.guodong.android.jasmine.common.HTTP_CODER_CHANNEL_HANDLER
-import com.guodong.android.jasmine.common.HTTP_COMPRESSOR_CHANNEL_HANDLER
-import com.guodong.android.jasmine.common.IDLE_CHANNEL_HANDLER
-import com.guodong.android.jasmine.common.MQTT_BROKER_CHANNEL_HANDLER
-import com.guodong.android.jasmine.common.MQTT_DECODER_CHANNEL_HANDLER
-import com.guodong.android.jasmine.common.MQTT_ENCODER_CHANNEL_HANDLER
-import com.guodong.android.jasmine.common.MQTT_EXCEPTION_CAUGHT_CHANNEL_HANDLER
-import com.guodong.android.jasmine.common.WEBSOCKET_MQTT_CHANNEL_HANDLER
-import com.guodong.android.jasmine.common.WEBSOCKET_PROTOCOL_CHANNEL_HANDLER
 import com.guodong.android.jasmine.core.auth.IMqttAuthenticator
 import com.guodong.android.jasmine.core.channel.ChannelGroup
 import com.guodong.android.jasmine.core.channel.DefaultChannelGroup
 import com.guodong.android.jasmine.core.channel.ExceptionCaughtHandler
+import com.guodong.android.jasmine.core.channel.MqttChannelInitializer
 import com.guodong.android.jasmine.core.channel.MqttHandler
-import com.guodong.android.jasmine.core.codec.MqttWebSocketCodec
+import com.guodong.android.jasmine.core.channel.MqttWebSocketChannelInitializer
 import com.guodong.android.jasmine.core.handler.ConnectHandler
 import com.guodong.android.jasmine.core.handler.DisconnectHandler
 import com.guodong.android.jasmine.core.handler.ForwardHandler
@@ -48,21 +39,18 @@ import com.guodong.android.jasmine.store.InMemorySessionStore
 import com.guodong.android.jasmine.store.InMemorySubscriptionStore
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.Channel
-import io.netty.channel.ChannelInitializer
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelOption
 import io.netty.channel.EventLoopGroup
 import io.netty.channel.nio.NioEventLoopGroup
-import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
-import io.netty.handler.codec.http.HttpContentCompressor
-import io.netty.handler.codec.http.HttpObjectAggregator
-import io.netty.handler.codec.http.HttpServerCodec
-import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler
-import io.netty.handler.codec.mqtt.MqttDecoder
-import io.netty.handler.codec.mqtt.MqttEncoder
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
-import io.netty.handler.timeout.IdleStateHandler
+import io.netty.handler.ssl.ClientAuth
+import io.netty.handler.ssl.SslContext
+import io.netty.handler.ssl.SslContextBuilder
+import io.netty.handler.ssl.SslProvider
+import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
@@ -84,6 +72,8 @@ class Jasmine private constructor(internal val builder: Builder) {
         State.RUNNING,
         State.STOPPING,
     )
+    @Retention(AnnotationRetention.SOURCE)
+    @Keep
     annotation class State {
         companion object {
             internal const val IDLE = 1
@@ -103,7 +93,13 @@ class Jasmine private constructor(internal val builder: Builder) {
     private var mqttChannel: Channel? = null
 
     @Volatile
+    private var mqttSSLChannel: Channel? = null
+
+    @Volatile
     private var websocketChannel: Channel? = null
+
+    @Volatile
+    private var websocketSSLChannel: Channel? = null
 
     private val channelGroup: ChannelGroup = DefaultChannelGroup()
     private val retryGroup: RetryGroup =
@@ -141,6 +137,7 @@ class Jasmine private constructor(internal val builder: Builder) {
     )
 
     private val disconnectHandler: DisconnectHandler = DisconnectHandler(
+        builder.sslEnabled,
         retryGroup,
         sessionStore,
         subscriptionStore,
@@ -185,7 +182,7 @@ class Jasmine private constructor(internal val builder: Builder) {
     private val willMessageHandler: WillMessageHandler =
         WillMessageHandler(sessionStore, forwardHandler)
 
-    private val mqttHandler: MqttHandler = MqttHandler(
+    internal val mqttHandler: MqttHandler = MqttHandler(
         channelGroup,
         retryGroup,
         willMessageHandler,
@@ -206,12 +203,26 @@ class Jasmine private constructor(internal val builder: Builder) {
         logger
     )
 
-    private val exceptionCaughtHandler: ExceptionCaughtHandler = ExceptionCaughtHandler(
+    internal val exceptionCaughtHandler: ExceptionCaughtHandler = ExceptionCaughtHandler(
         willMessageHandler,
         builder.clientListener,
         sessionStore,
         logger
     )
+
+    internal var sslContext: SslContext? = if (builder.sslEnabled) {
+        SslContextBuilder.forServer(builder.serverCertFile, builder.privateKeyFile)
+            .apply {
+                if (builder.twoWayAuthEnabled) {
+                    trustManager(builder.caCertFile)
+                        .clientAuth(ClientAuth.REQUIRE)
+                }
+            }
+            .sslProvider(SslProvider.JDK)
+            .build()
+    } else {
+        null
+    }
 
     @GuardedBy("stateLock")
     private var state: Int = State.IDLE
@@ -245,10 +256,39 @@ class Jasmine private constructor(internal val builder: Builder) {
                 return@thread
             }
 
+            val sslEnabled = builder.sslEnabled
+            if (sslEnabled) {
+                val mqttSSLResult = runCatching { mqttSSLServer() }
+                if (mqttSSLResult.isFailure) {
+                    stopMqttServer()
+                    stopMqttSSLServer()
+
+                    setState(State.IDLE)
+
+                    val cause = mqttSSLResult.exceptionOrNull()!!
+                    logger.e(
+                        TAG,
+                        "MQTT SSL Broker start failure on port(${builder.sslPort})",
+                        cause
+                    )
+
+                    builder.jasmineCallback?.onStartFailure(this, cause)
+                    return@thread
+                }
+            }
+
             if (!builder.wsEnabled) {
                 setState(State.RUNNING)
 
-                logger.i(TAG, "MQTT Broker is running on port(${builder.port})")
+                if (sslEnabled) {
+                    logger.i(
+                        TAG,
+                        "MQTT Broker is running on port(${builder.port}) and sslPort(${builder.sslPort})"
+                    )
+                } else {
+                    logger.i(TAG, "MQTT Broker is running on port(${builder.port})")
+                }
+
                 builder.jasmineCallback?.onStarted(this)
                 return@thread
             }
@@ -256,11 +296,14 @@ class Jasmine private constructor(internal val builder: Builder) {
             val websocketResult = runCatching { websocketServer() }
             if (websocketResult.isFailure) {
                 stopMqttServer()
+                if (sslEnabled) {
+                    stopMqttSSLServer()
+                }
                 stopWebSocketServer()
 
                 setState(State.IDLE)
 
-                val cause = mqttResult.exceptionOrNull()!!
+                val cause = websocketResult.exceptionOrNull()!!
                 logger.e(
                     TAG,
                     "MQTT Broker WebSocketProtocol start failure on port(${builder.wsPort})",
@@ -271,12 +314,42 @@ class Jasmine private constructor(internal val builder: Builder) {
                 return@thread
             }
 
+            if (sslEnabled) {
+                val websocketSSLResult = runCatching { websocketSSLServer() }
+                if (websocketSSLResult.isFailure) {
+                    stopMqttServer()
+                    stopMqttSSLServer()
+                    stopWebSocketServer()
+                    stopWebSocketSSLServer()
+
+                    setState(State.IDLE)
+
+                    val cause = websocketSSLResult.exceptionOrNull()!!
+                    logger.e(
+                        TAG,
+                        "MQTT SSL Broker WebSocketProtocol start failure on port(${builder.wsSSLPort})",
+                        cause
+                    )
+
+                    builder.jasmineCallback?.onStartFailure(this, cause)
+                    return@thread
+                }
+            }
+
             setState(State.RUNNING)
 
-            logger.i(
-                TAG,
-                "MQTT Broker is running on port(${builder.port}), websocket on port(${builder.wsPort}) and path(${builder.wsPath})"
-            )
+            if (sslEnabled) {
+                logger.i(
+                    TAG,
+                    "MQTT Broker is running on port(${builder.port}) and sslPort(${builder.sslPort}), websocket on port(${builder.wsPort}) and sslPort(${builder.wsSSLPort}) and path(${builder.wsPath})"
+                )
+            } else {
+                logger.i(
+                    TAG,
+                    "MQTT Broker is running on port(${builder.port}), websocket on port(${builder.wsPort}) and path(${builder.wsPath})"
+                )
+            }
+
             builder.jasmineCallback?.onStarted(this)
         }
     }
@@ -306,11 +379,29 @@ class Jasmine private constructor(internal val builder: Builder) {
                 return@thread
             }
 
+            val mqttSSLResult = runCatching { stopMqttSSLServer() }
+            if (mqttSSLResult.isFailure) {
+                setState(State.RUNNING)
+
+                val cause = mqttSSLResult.exceptionOrNull()!!
+                builder.jasmineCallback?.onStopFailure(this, cause)
+                return@thread
+            }
+
             val websocketResult = runCatching { stopWebSocketServer() }
             if (websocketResult.isFailure) {
                 setState(State.RUNNING)
 
-                val cause = mqttResult.exceptionOrNull()!!
+                val cause = websocketResult.exceptionOrNull()!!
+                builder.jasmineCallback?.onStopFailure(this, cause)
+                return@thread
+            }
+
+            val websocketSSLResult = runCatching { stopWebSocketSSLServer() }
+            if (websocketSSLResult.isFailure) {
+                setState(State.RUNNING)
+
+                val cause = websocketSSLResult.exceptionOrNull()!!
                 builder.jasmineCallback?.onStopFailure(this, cause)
                 return@thread
             }
@@ -331,9 +422,19 @@ class Jasmine private constructor(internal val builder: Builder) {
         mqttChannel = null
     }
 
+    private fun stopMqttSSLServer() {
+        mqttSSLChannel?.close()?.sync()
+        mqttSSLChannel = null
+    }
+
     private fun stopWebSocketServer() {
         websocketChannel?.close()?.sync()
         websocketChannel = null
+    }
+
+    private fun stopWebSocketSSLServer() {
+        websocketSSLChannel?.close()?.sync()
+        websocketSSLChannel = null
     }
 
     fun isRunning(): Boolean = synchronized(stateLock) {
@@ -353,34 +454,7 @@ class Jasmine private constructor(internal val builder: Builder) {
     }
 
     private fun mqttServer() {
-        val bootstrap = ServerBootstrap()
-            .group(bossGroup, workerGroup)
-            .channel(NioServerSocketChannel::class.java)
-            .option(ChannelOption.SO_BACKLOG, 512)
-            .option(ChannelOption.SO_REUSEADDR, true)
-            .childOption(ChannelOption.SO_KEEPALIVE, true)
-            .handler(LoggingHandler(LogLevel.INFO))
-            .childHandler(object : ChannelInitializer<SocketChannel>() {
-                override fun initChannel(ch: SocketChannel) {
-                    ch.pipeline()
-                        .addFirst(
-                            IDLE_CHANNEL_HANDLER,
-                            IdleStateHandler(
-                                0L,
-                                0L,
-                                builder.keepAliveTimeSeconds.toLong(),
-                                TimeUnit.SECONDS
-                            )
-                        )
-                        .addLast(
-                            MQTT_DECODER_CHANNEL_HANDLER,
-                            MqttDecoder(builder.maxContentLength, builder.maxClientIdLength)
-                        )
-                        .addLast(MQTT_ENCODER_CHANNEL_HANDLER, MqttEncoder.INSTANCE)
-                        .addLast(MQTT_BROKER_CHANNEL_HANDLER, mqttHandler)
-                        .addLast(MQTT_EXCEPTION_CAUGHT_CHANNEL_HANDLER, exceptionCaughtHandler)
-                }
-            })
+        val bootstrap = createServerBootstrap(MqttChannelInitializer(this, false))
 
         val host = builder.host
         mqttChannel = if (host.isEmpty() || host.isBlank()) {
@@ -390,48 +464,19 @@ class Jasmine private constructor(internal val builder: Builder) {
         }.sync().channel()
     }
 
+    private fun mqttSSLServer() {
+        val bootstrap = createServerBootstrap(MqttChannelInitializer(this, true))
+
+        val host = builder.host
+        mqttSSLChannel = if (host.isEmpty() || host.isBlank()) {
+            bootstrap.bind(builder.sslPort)
+        } else {
+            bootstrap.bind(host, builder.sslPort)
+        }.sync().channel()
+    }
+
     private fun websocketServer() {
-        val bootstrap = ServerBootstrap()
-            .group(bossGroup, workerGroup)
-            .channel(NioServerSocketChannel::class.java)
-            .option(ChannelOption.SO_BACKLOG, 512)
-            .option(ChannelOption.SO_REUSEADDR, true)
-            .childOption(ChannelOption.SO_KEEPALIVE, true)
-            .handler(LoggingHandler(LogLevel.INFO))
-            .childHandler(object : ChannelInitializer<SocketChannel>() {
-                override fun initChannel(ch: SocketChannel) {
-                    ch.pipeline()
-                        .addFirst(
-                            IDLE_CHANNEL_HANDLER,
-                            IdleStateHandler(
-                                0L,
-                                0L,
-                                builder.keepAliveTimeSeconds.toLong(),
-                                TimeUnit.SECONDS
-                            )
-                        )
-                        .addLast(HTTP_CODER_CHANNEL_HANDLER, HttpServerCodec())
-                        .addLast(
-                            HTTP_AGGREGATOR_CHANNEL_HANDLER,
-                            HttpObjectAggregator(builder.maxContentLength)
-                        )
-                        .addLast(HTTP_COMPRESSOR_CHANNEL_HANDLER, HttpContentCompressor())
-                        .addLast(
-                            WEBSOCKET_PROTOCOL_CHANNEL_HANDLER,
-                            WebSocketServerProtocolHandler(
-                                builder.wsPath,
-                                "mqtt,mqttv3.1,mqttv3.1.1",
-                                true,
-                                builder.maxContentLength,
-                            )
-                        )
-                        .addLast(WEBSOCKET_MQTT_CHANNEL_HANDLER, MqttWebSocketCodec)
-                        .addLast(MQTT_DECODER_CHANNEL_HANDLER, MqttDecoder())
-                        .addLast(MQTT_ENCODER_CHANNEL_HANDLER, MqttEncoder.INSTANCE)
-                        .addLast(MQTT_BROKER_CHANNEL_HANDLER, mqttHandler)
-                        .addLast(MQTT_EXCEPTION_CAUGHT_CHANNEL_HANDLER, exceptionCaughtHandler)
-                }
-            })
+        val bootstrap = createServerBootstrap(MqttWebSocketChannelInitializer(this, false))
 
         val host = builder.host
         websocketChannel = if (host.isEmpty() || host.isBlank()) {
@@ -441,20 +486,50 @@ class Jasmine private constructor(internal val builder: Builder) {
         }.sync().channel()
     }
 
+    private fun websocketSSLServer() {
+        val bootstrap = createServerBootstrap(MqttWebSocketChannelInitializer(this, true))
+
+        val host = builder.host
+        websocketSSLChannel = if (host.isEmpty() || host.isBlank()) {
+            bootstrap.bind(builder.wsSSLPort)
+        } else {
+            bootstrap.bind(host, builder.wsSSLPort)
+        }.sync().channel()
+    }
+
+    private fun createServerBootstrap(childHandler: ChannelHandler): ServerBootstrap {
+        return ServerBootstrap()
+            .group(bossGroup, workerGroup)
+            .channel(NioServerSocketChannel::class.java)
+            .option(ChannelOption.SO_BACKLOG, 512)
+            .option(ChannelOption.SO_REUSEADDR, true)
+            .childOption(ChannelOption.SO_KEEPALIVE, true)
+            .handler(LoggingHandler(LogLevel.INFO))
+            .childHandler(childHandler)
+    }
+
     @Keep
     class Builder {
 
         internal var host: String = ""
         internal var port: Int = 1883
+        internal var sslPort: Int = 1884
 
         internal var wsEnabled: Boolean = false
         internal var wsPort: Int = 8083
+        internal var wsSSLPort: Int = 8084
         internal var wsPath: String = "/mqtt"
 
         internal var keepAliveTimeSeconds: Int = 5
 
         internal var retryIntervalMillis: Long = 3_000
         internal var maxRetries: Int = 5
+
+        internal var sslEnabled: Boolean = false
+        internal var twoWayAuthEnabled: Boolean = false
+        internal var caCertFile: File? = null
+        internal var serverCertFile: File? = null
+        internal var privateKeyFile: File? = null
 
         internal var maxContentLength: Int = 65536
         internal var maxClientIdLength: Int = 255
@@ -473,12 +548,20 @@ class Jasmine private constructor(internal val builder: Builder) {
             this.port = port
         }
 
+        fun sslPort(port: Int) = apply {
+            this.sslPort = port
+        }
+
         fun enableWebsocket(enable: Boolean) = apply {
             this.wsEnabled = enable
         }
 
         fun websocketPort(port: Int) = apply {
             this.wsPort = port
+        }
+
+        fun websocketSSLPort(port: Int) = apply {
+            this.wsSSLPort = port
         }
 
         fun websocketPath(path: String) = apply {
@@ -495,6 +578,38 @@ class Jasmine private constructor(internal val builder: Builder) {
 
         fun maxRetries(max: Int) = apply {
             this.maxRetries = max
+        }
+
+        fun enableSSL(enable: Boolean) = apply {
+            this.sslEnabled = enable
+        }
+
+        fun enableTwoWayAuth(enable: Boolean) = apply {
+            this.twoWayAuthEnabled = enable
+        }
+
+        fun caCertFile(file: File) = apply {
+            if (!(file.exists())) {
+                throw IllegalArgumentException("ca cert file is not exists")
+            }
+
+            this.caCertFile = file
+        }
+
+        fun serverCertFile(file: File) = apply {
+            if (!(file.exists())) {
+                throw IllegalArgumentException("server cert file is not exists")
+            }
+
+            this.serverCertFile = file
+        }
+
+        fun privateKeyFile(file: File) = apply {
+            if (!(file.exists())) {
+                throw IllegalArgumentException("private key file is not exists")
+            }
+
+            this.privateKeyFile = file
         }
 
         fun maxContentLength(length: Int) = apply {
@@ -522,11 +637,28 @@ class Jasmine private constructor(internal val builder: Builder) {
         }
 
         fun build(): Jasmine {
+
+            if (sslEnabled) {
+                if (twoWayAuthEnabled) {
+                    if (caCertFile == null) {
+                        throw IllegalArgumentException("Do you have inject caCertFile?")
+                    }
+                }
+
+                if (serverCertFile == null) {
+                    throw IllegalArgumentException("Do you have inject serverCertFile?")
+                }
+
+                if (privateKeyFile == null) {
+                    throw IllegalArgumentException("Do you have inject privateKeyFile?")
+                }
+            }
+
             return Jasmine(this)
         }
 
         fun start(): Jasmine {
-            return Jasmine(this).apply { start() }
+            return build().apply { start() }
         }
     }
 }

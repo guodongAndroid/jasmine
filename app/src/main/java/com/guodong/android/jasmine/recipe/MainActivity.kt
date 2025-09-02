@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.guodong.android.jasmine.Jasmine
+import com.guodong.android.jasmine.core.exception.IllegalJasmineStateException
 import com.guodong.android.jasmine.core.listener.IClientListener
 import com.guodong.android.jasmine.core.listener.IJasmineCallback
 import com.guodong.android.jasmine.recipe.databinding.ActivityMainBinding
@@ -81,6 +82,7 @@ class MainActivity : AppCompatActivity(), IJasmineCallback, IClientListener {
         }
 
         binding.stop.setOnClickListener {
+            binding.stop.isEnabled = false
             jasmine.stop()
         }
 
@@ -95,6 +97,10 @@ class MainActivity : AppCompatActivity(), IJasmineCallback, IClientListener {
             binding.websocketPath.isEnabled = isChecked
             binding.websocketSslPort.isEnabled = binding.mqttSslSwitch.isChecked && isChecked
         }
+    }
+
+    override fun onStarting(jasmine: Jasmine) {
+
     }
 
     override fun onStarted(jasmine: Jasmine) {
@@ -118,9 +124,16 @@ class MainActivity : AppCompatActivity(), IJasmineCallback, IClientListener {
 
     override fun onStartFailure(jasmine: Jasmine, cause: Throwable) {
         Log.e(TAG, "onStartFailure", cause)
-        lifecycleScope.launch {
-            binding.start.isEnabled = true
+
+        if (cause !is IllegalJasmineStateException) {
+            lifecycleScope.launch {
+                binding.start.isEnabled = true
+            }
         }
+    }
+
+    override fun onStopping(jasmine: Jasmine) {
+
     }
 
     override fun onStopped(jasmine: Jasmine) {
@@ -145,8 +158,11 @@ class MainActivity : AppCompatActivity(), IJasmineCallback, IClientListener {
 
     override fun onStopFailure(jasmine: Jasmine, cause: Throwable) {
         Log.e(TAG, "onStopFailure", cause)
-        lifecycleScope.launch {
-            binding.stop.isEnabled = true
+
+        if (cause !is IllegalJasmineStateException) {
+            lifecycleScope.launch {
+                binding.stop.isEnabled = true
+            }
         }
     }
 

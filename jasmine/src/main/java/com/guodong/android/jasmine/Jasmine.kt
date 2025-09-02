@@ -10,6 +10,7 @@ import com.guodong.android.jasmine.core.channel.ExceptionCaughtHandler
 import com.guodong.android.jasmine.core.channel.MqttChannelInitializer
 import com.guodong.android.jasmine.core.channel.MqttHandler
 import com.guodong.android.jasmine.core.channel.MqttWebSocketChannelInitializer
+import com.guodong.android.jasmine.core.exception.IllegalJasmineStateException
 import com.guodong.android.jasmine.core.handler.ConnectHandler
 import com.guodong.android.jasmine.core.handler.DisconnectHandler
 import com.guodong.android.jasmine.core.handler.ForwardHandler
@@ -71,6 +72,7 @@ class Jasmine private constructor(internal val builder: Builder) {
         State.STARTING,
         State.RUNNING,
         State.STOPPING,
+        State.STOPPED,
     )
     @Retention(AnnotationRetention.SOURCE)
     @Keep
@@ -80,6 +82,7 @@ class Jasmine private constructor(internal val builder: Builder) {
             internal const val STARTING = 2
             internal const val RUNNING = 3
             internal const val STOPPING = 4
+            internal const val STOPPED = 5
         }
     }
 
@@ -225,15 +228,24 @@ class Jasmine private constructor(internal val builder: Builder) {
     }
 
     @GuardedBy("stateLock")
-    private var state: Int = State.IDLE
+    var state: Int = State.IDLE
+        private set
 
     fun start() {
         synchronized(stateLock) {
             if (state == State.RUNNING) {
+                builder.jasmineCallback?.onStartFailure(
+                    this,
+                    IllegalJasmineStateException(state, "Jasmine is RUNNING")
+                )
                 return
             }
 
             if (state != State.IDLE) {
+                builder.jasmineCallback?.onStartFailure(
+                    this,
+                    IllegalJasmineStateException(state, "Jasmine is not IDLE")
+                )
                 return
             }
 
@@ -243,6 +255,8 @@ class Jasmine private constructor(internal val builder: Builder) {
         logger.i(TAG, "MQTT Broker is starting...")
 
         thread(name = "Jasmine-start-thread") {
+            builder.jasmineCallback?.onStarting(this)
+
             val mqttResult = runCatching { mqttServer() }
             if (mqttResult.isFailure) {
                 stopMqttServer()
@@ -356,11 +370,11 @@ class Jasmine private constructor(internal val builder: Builder) {
 
     fun stop() {
         synchronized(stateLock) {
-            if (state == State.IDLE) {
-                return
-            }
-
             if (state != State.RUNNING) {
+                builder.jasmineCallback?.onStopFailure(
+                    this,
+                    IllegalJasmineStateException(state, "Jasmine is not RUNNING")
+                )
                 return
             }
 
@@ -370,6 +384,8 @@ class Jasmine private constructor(internal val builder: Builder) {
         logger.i(TAG, "MQTT Broker is stopping...")
 
         thread(name = "Jasmine-stop-thread") {
+            builder.jasmineCallback?.onStopping(this)
+
             val mqttResult = runCatching { stopMqttServer() }
             if (mqttResult.isFailure) {
                 setState(State.RUNNING)
@@ -409,7 +425,10 @@ class Jasmine private constructor(internal val builder: Builder) {
             channelGroup.close()
             retryGroup.stop()
 
-            setState(State.IDLE)
+            bossGroup.shutdownGracefully().sync()
+            workerGroup.shutdownGracefully().sync()
+
+            setState(State.STOPPED)
 
             logger.i(TAG, "MQTT Broker is stopped")
 

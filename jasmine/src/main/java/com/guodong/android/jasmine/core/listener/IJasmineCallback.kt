@@ -10,8 +10,10 @@ import com.guodong.android.jasmine.Jasmine
 @Keep
 @WorkerThread
 interface IJasmineCallback {
+    fun onStarting(jasmine: Jasmine)
     fun onStarted(jasmine: Jasmine)
     fun onStartFailure(jasmine: Jasmine, cause: Throwable)
+    fun onStopping(jasmine: Jasmine)
     fun onStopped(jasmine: Jasmine)
     fun onStopFailure(jasmine: Jasmine, cause: Throwable)
 }

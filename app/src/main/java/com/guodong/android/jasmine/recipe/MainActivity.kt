@@ -6,6 +6,8 @@ import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.guodong.android.jasmine.Jasmine
 import com.guodong.android.jasmine.core.exception.IllegalJasmineStateException
 import com.guodong.android.jasmine.core.listener.IClientListener
@@ -28,6 +30,8 @@ class MainActivity : AppCompatActivity(), IJasmineCallback, IClientListener {
     private lateinit var jasmine: Jasmine
 
     private var clientCount = AtomicInteger(0)
+    private val clients = mutableListOf<Client>()
+    private val clientAdapter = ClientAdapter(clients)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,6 +101,26 @@ class MainActivity : AppCompatActivity(), IJasmineCallback, IClientListener {
             binding.websocketPath.isEnabled = isChecked
             binding.websocketSslPort.isEnabled = binding.mqttSslSwitch.isChecked && isChecked
         }
+
+        with(binding.rvClients) {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = clientAdapter
+            addItemDecoration(
+                DividerItemDecoration(
+                    this@MainActivity,
+                    DividerItemDecoration.VERTICAL
+                )
+            )
+            setHasFixedSize(true)
+        }
+    }
+
+    override fun onDestroy() {
+        if (::jasmine.isInitialized) {
+            jasmine.stop()
+        }
+
+        super.onDestroy()
     }
 
     override fun onStarting(jasmine: Jasmine) {
@@ -169,6 +193,7 @@ class MainActivity : AppCompatActivity(), IJasmineCallback, IClientListener {
     override fun onClientOnline(clientId: String, username: String) {
         clientCount.incrementAndGet()
         refreshClientCount()
+        refreshClientAdapter(Client(clientId, username), true)
     }
 
     override fun onClientOffline(
@@ -179,11 +204,27 @@ class MainActivity : AppCompatActivity(), IJasmineCallback, IClientListener {
     ) {
         clientCount.decrementAndGet()
         refreshClientCount()
+        refreshClientAdapter(Client(clientId, username), false)
     }
 
     private fun refreshClientCount() {
         runOnUiThread {
             binding.tvClientCount.text = getString(R.string.text_client_counts, clientCount.get())
+        }
+    }
+
+    private fun refreshClientAdapter(client: Client, online: Boolean) {
+        runOnUiThread {
+            if (online) {
+                clients.add(client)
+                clientAdapter.notifyItemInserted(clients.lastIndex)
+            } else {
+                val indexOf = clients.indexOf(client)
+                if (indexOf >= 0) {
+                    clients.removeAt(indexOf)
+                    clientAdapter.notifyItemRemoved(indexOf)
+                }
+            }
         }
     }
 

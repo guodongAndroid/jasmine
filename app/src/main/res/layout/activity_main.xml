@@ -42,6 +42,7 @@
         android:hint="@string/mqtt_port_hint"
         android:imeOptions="actionNext"
         android:inputType="numberDecimal"
+        android:nextFocusForward="@id/mqtt_ssl_port"
         android:maxLength="5"
         app:layout_constraintBottom_toBottomOf="@id/mqtt_port_label"
         app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
@@ -114,6 +115,7 @@
         android:hint="@string/mqtt_ssl_port_hint"
         android:imeOptions="actionNext"
         android:inputType="numberDecimal"
+        android:nextFocusForward="@id/websocket_port"
         android:maxLength="5"
         app:layout_constraintBottom_toBottomOf="@id/mqtt_ssl_port_label"
         app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
@@ -162,6 +164,7 @@
         android:hint="@string/websocket_port_hint"
         android:imeOptions="actionNext"
         android:inputType="numberDecimal"
+        android:nextFocusForward="@id/websocket_ssl_port"
         android:maxLength="5"
         app:layout_constraintBottom_toBottomOf="@id/websocket_port_label"
         app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
@@ -190,6 +193,7 @@
         android:hint="@string/websocket_ssl_port_hint"
         android:imeOptions="actionNext"
         android:inputType="numberDecimal"
+        android:nextFocusForward="@id/websocket_path"
         android:maxLength="5"
         app:layout_constraintBottom_toBottomOf="@id/websocket_ssl_port_label"
         app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
@@ -213,11 +217,11 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:singleLine="true"
-        android:maxLines="1"
         android:enabled="false"
         android:gravity="end"
         android:imeOptions="actionDone"
+        android:maxLines="1"
+        android:singleLine="true"
         android:text="@string/websocket_path_hint"
         app:layout_constraintBottom_toBottomOf="@id/websocket_path_label"
         app:layout_constraintEnd_toEndOf="@id/vertical_0.5"
@@ -269,5 +273,14 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="@id/vertical_0.5"
         app:layout_constraintTop_toBottomOf="@id/state" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_clients"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/vertical_0.5"
+        app:layout_constraintTop_toBottomOf="@id/tv_client_count" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
